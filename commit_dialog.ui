@@ -66,10 +66,17 @@
       <bool>true</bool>
      </property>
      <property name="selectionMode">
-      <enum>QAbstractItemView::ExtendedSelection</enum>
+      <enum>QAbstractItemView::SingleSelection</enum>
      </property>
      <property name="textElideMode">
       <enum>Qt::ElideMiddle</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="showUnversionedCheckBox">
+     <property name="text">
+      <string>Show unversioned files</string>
      </property>
     </widget>
    </item>

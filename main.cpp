@@ -6,6 +6,8 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     CommitDialog w;
 
+    w.watch(".");
+
     if (!w.status()) {
         return 1;
     }
