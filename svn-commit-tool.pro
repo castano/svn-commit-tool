@@ -19,3 +19,6 @@ SOURCES += main.cpp\
 HEADERS  += commit_dialog.h
 
 FORMS    += commit_dialog.ui
+
+RESOURCES += \
+    resources.qrc

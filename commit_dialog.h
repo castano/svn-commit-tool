@@ -32,6 +32,7 @@ public:
     void diff(const QString & filePath);
     void revert(const QString & filePath);
     void add(const QString & filePath);
+    void remove(const QString & filePath);
 
     QList<QString> paths;
     bool messageAvailable = false;
@@ -44,6 +45,7 @@ private slots:
     void onDiffAction();
     void onRevertAction();
     void onAddAction();
+    void onRemoveAction();
     void moveToChangelist();
     void moveToNewChangelist();
     void refresh();

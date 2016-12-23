@@ -19,6 +19,7 @@
 // - Accept dropped files and file paths. Check that they are in the same svn repository and add to list.
 // - Remember previous commit messages.
 // - Add some support for editing properties?
+// - Authentication.
 
 inline static QString filePathFromStatus(QString line) {
     return line.right(line.size() - 4).trimmed();
@@ -233,6 +234,14 @@ void CommitDialog::add(const QString & filePath)
     status();
 }
 
+void CommitDialog::remove(const QString & filePath)
+{
+    QFile::remove(filePath);
+
+    // Refresh status after changes.
+    status();
+}
+
 void CommitDialog::onDiffAction() {
     QListWidgetItem * item = ui->listWidget->currentItem();
     if (item) {
@@ -251,6 +260,13 @@ void CommitDialog::onAddAction() {
     QListWidgetItem * item = ui->listWidget->currentItem();
     if (item) {
         add(filePathFromStatus(item->text()));
+    }
+}
+
+void CommitDialog::onRemoveAction() {
+    QListWidgetItem * item = ui->listWidget->currentItem();
+    if (item) {
+        remove(filePathFromStatus(item->text()));
     }
 }
 
@@ -318,7 +334,7 @@ void CommitDialog::on_listWidget_itemDoubleClicked(QListWidgetItem *item)
 void CommitDialog::on_listWidget_customContextMenuRequested(const QPoint &pos)
 {
     QMenu contextMenu;
-    QMenu changelists("Move to changelist");
+    QMenu changelistMenu("Move to changelist");
 
     QAction * action;
 
@@ -340,27 +356,38 @@ void CommitDialog::on_listWidget_customContextMenuRequested(const QPoint &pos)
                 action = contextMenu.addAction("Revert", this, SLOT(onRevertAction()));
                 //action->setIcon(revertIcon);
 
-                foreach(const QString & str, changeLists) {
-                    changelists.addAction(str, this, SLOT(moveToChangelist()));
-                }
-                changelists.addAction("New changelist", this, SLOT(moveToNewChangelist()));
+                // @@ Only show if item is a file (not a folder).
+                action = contextMenu.addAction("Edit", this, SLOT(onEditAction()));
+                //action->setIcon(editIcon);
 
-                contextMenu.addMenu(&changelists);
+                foreach(const QString & str, changeLists) {
+                    changelistMenu.addAction(str, this, SLOT(moveToChangelist()));
+                }
+                action = changelistMenu.addAction("New changelist", this, SLOT(moveToNewChangelist()));
+                changelistMenu.insertSeparator(action);
+
+
+                contextMenu.addMenu(&changelistMenu);
             }
             else if (line.startsWith("?")) {
                 action = contextMenu.addAction("Add", this, SLOT(onAddAction()));
                 //action->setIcon(addIcon);
+
+                action = contextMenu.addAction("Remove", this, SLOT(onRemoveAction()));
+
+                // @@ Only show if item is a file (not a folder).
+                action = contextMenu.addAction("Edit", this, SLOT(onEditAction()));
+                //action->setIcon(editIcon);
             }
 
-            // @@ Only show if item is a file (not a folder).
-            QAction * action = contextMenu.addAction("Edit", this, SLOT(onEditAction()));
-            //action->setIcon(editIcon);
         }
     }
 
     action = contextMenu.addAction("Refresh", this, SLOT(refresh()));
-    //action->setIcon(refreshIcon);
+    //action->setIcon(QIcon("images/refresh.png"));
     contextMenu.insertSeparator(action);
+
+    //contextMenu.setStyleSheet("background-color: #AACCCCCC");
 
     contextMenu.exec(ui->listWidget->viewport()->mapToGlobal(pos));
 }
