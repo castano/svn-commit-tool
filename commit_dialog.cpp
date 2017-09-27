@@ -5,6 +5,7 @@
 #include <QByteArray>
 #include <QSettings>
 #include <QMenu>
+#include <QFileDialog>
 
 // TODO:
 // - Remember selection on refresh.
@@ -38,6 +39,8 @@ CommitDialog::CommitDialog(QWidget *parent) :
     ui(new Ui::Dialog)
 {
     ui->setupUi(this);
+
+    QApplication::instance()->installEventFilter(this);
 }
 
 CommitDialog::~CommitDialog()
@@ -68,6 +71,27 @@ void CommitDialog::showEvent(QShowEvent * e)
     ui->plainTextEdit->setPlainText(settings.value("message").toString());
     ui->showUnversionedCheckBox->setCheckState(settings.value("show_unversioned").toBool() ? Qt::Checked : Qt::Unchecked);
     QDialog::showEvent(e);
+}
+
+static const Qt::Key action_modifier_key = Qt::Key_Alt;
+static const Qt::KeyboardModifiers action_modifier = Qt::AltModifier;
+
+bool CommitDialog::eventFilter(QObject *obj, QEvent *event)
+{
+    if (event->type() == QEvent::KeyPress) {
+        QKeyEvent * e = static_cast<QKeyEvent *>(event);
+        if (e->key() == action_modifier_key) {
+            ui->commitButton->setText(tr("Create patch..."));
+        }
+    }
+    else if (event->type() == QEvent::KeyRelease) {
+        QKeyEvent * e = static_cast<QKeyEvent *>(event);
+        if (e->key() == action_modifier_key) {
+            ui->commitButton->setText(tr("Commit"));
+        }
+    }
+
+    return QDialog::eventFilter(obj, event);
 }
 
 void CommitDialog::addChangeList(const char * line)
@@ -191,6 +215,46 @@ void CommitDialog::commit()
     if (svn.exitStatus() == QProcess::NormalExit && svn.exitCode() == 0) {
         ui->plainTextEdit->clear();
     }
+    else {
+        // @@ Print error.
+    }
+
+    close();
+}
+
+void CommitDialog::createPatch(const QString & fileName)
+{
+    QStringList arguments;
+
+    // Add commit message.
+    arguments.append("diff");
+    arguments.append("-N");     // Non recursive.
+    arguments.append("-x");
+    arguments.append("--ignore-eol-style");
+
+    int count = ui->listWidget->count();
+    for (int i = 0; i < count; i++) {
+        QListWidgetItem * item = ui->listWidget->item(i);
+        if (item->checkState() == Qt::Checked) {
+            QString filePath = filePathFromStatus(item->text());
+            arguments.append(filePath);
+        }
+    }
+
+    QProcess svn;
+    svn.setProgram("svn");
+    //svn.setProgram("echo");
+    svn.setProcessChannelMode(QProcess::ForwardedErrorChannel);
+    svn.setStandardOutputFile(fileName);
+    svn.setArguments(arguments);
+
+    svn.start();
+    hide();
+
+    svn.waitForFinished(-1);
+    if (svn.exitStatus() == QProcess::NormalExit && svn.exitCode() == 0) {
+        ui->plainTextEdit->clear();
+    }
 
     close();
 }
@@ -200,7 +264,7 @@ void CommitDialog::diff(const QString & filePath)
     QProcess svn;
     svn.setProgram("svn");
     svn.setProcessChannelMode(QProcess::ForwardedChannels);
-    svn.setArguments({"diff", "-N", filePath});
+    svn.setArguments({"diff", "-N", "-x", "--ignore-eol-style", filePath});
 
     svn.start();
     svn.waitForFinished(-1);
@@ -284,9 +348,18 @@ void CommitDialog::on_plainTextEdit_textChanged()
     updateStatus();
 }
 
+
 void CommitDialog::on_commitButton_pressed()
 {
-    commit();
+    if (QApplication::keyboardModifiers() & action_modifier) {
+        QString fileName = QFileDialog::getSaveFileName(this, tr("Save patch file..."), "changes.patch", tr("Patch files (*.patch)"));
+        if (!fileName.isNull()) {
+            createPatch(fileName);
+        }
+    }
+    else {
+        commit();
+    }
 }
 
 void CommitDialog::on_listWidget_itemChanged(QListWidgetItem *item)
@@ -334,7 +407,7 @@ void CommitDialog::on_listWidget_itemDoubleClicked(QListWidgetItem *item)
 void CommitDialog::on_listWidget_customContextMenuRequested(const QPoint &pos)
 {
     QMenu contextMenu;
-    QMenu changelistMenu("Move to changelist");
+    QMenu changelistMenu(tr("Move to changelist"));
 
     QAction * action;
 

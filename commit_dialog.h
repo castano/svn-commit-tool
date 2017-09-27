@@ -21,6 +21,7 @@ public:
     virtual void reject() override;
     virtual void closeEvent(QCloseEvent *) override;
     virtual void showEvent(QShowEvent *) override;
+    virtual bool eventFilter(QObject *obj, QEvent *event) override;
 
     void addChangeList(const char * name);
     void addFile(const char * filepath);
@@ -29,6 +30,7 @@ public:
     void watch(const QString & path);
     bool status();
     void commit();
+    void createPatch(const QString & fileName);
     void diff(const QString & filePath);
     void revert(const QString & filePath);
     void add(const QString & filePath);
